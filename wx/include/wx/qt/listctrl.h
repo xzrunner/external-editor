@@ -9,7 +9,9 @@
 #define _WX_QT_LISTCTRL_H_
 
 #include "wx/textctrl.h"
-#include <QtWidgets/QTreeWidget>
+
+class QTreeWidget;
+class QTreeWidgetItem;
 
 class WXDLLIMPEXP_FWD_CORE wxImageList;
 
@@ -279,12 +281,12 @@ public:
     virtual int OnGetItemColumnImage(long item, long column) const;
 
     // return the attribute for the given item and column (may return NULL if none)
-    virtual wxListItemAttr *OnGetItemColumnAttr(long item, long WXUNUSED(column)) const
+    virtual wxItemAttr *OnGetItemColumnAttr(long item, long WXUNUSED(column)) const
     {
         return OnGetItemAttr(item);
     }
 
-    virtual QTreeWidget *GetHandle() const;
+    virtual QWidget *GetHandle() const;
 
 protected:
     void Init();

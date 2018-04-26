@@ -85,8 +85,8 @@ public:
 
     void GetItem( wxListItem &info ) const;
 
-    void SetAttr(wxListItemAttr *attr) { m_attr = attr; }
-    wxListItemAttr *GetAttr() const { return m_attr; }
+    void SetAttr(wxItemAttr *attr) { m_attr = attr; }
+    wxItemAttr *GetAttr() const { return m_attr; }
 
 public:
     // the item image or -1
@@ -103,7 +103,7 @@ public:
     wxListMainWindow *m_owner;
 
     // custom attributes or NULL
-    wxListItemAttr *m_attr;
+    wxItemAttr *m_attr;
 
 protected:
     // common part of all ctors
@@ -263,8 +263,8 @@ public:
     wxString GetText(int index) const;
     void SetText( int index, const wxString& s );
 
-    wxListItemAttr *GetAttr() const;
-    void SetAttr(wxListItemAttr *attr);
+    wxItemAttr *GetAttr() const;
+    void SetAttr(wxItemAttr *attr);
 
     // return true if the highlighting really changed
     bool Highlight( bool on );
@@ -369,6 +369,8 @@ public:
     bool m_sendSetColumnWidth;
     int m_colToSend;
     int m_widthToSend;
+
+    virtual wxWindow *GetMainWindowOfCompositeControl() wxOVERRIDE { return GetParent(); }
 
     virtual void OnInternalIdle() wxOVERRIDE;
 
@@ -641,8 +643,8 @@ public:
     bool GetItemPosition( long item, wxPoint& pos ) const;
     int GetSelectedItemCount() const;
 
-    bool HasCheckboxes() const;
-    bool EnableCheckboxes(bool enable = true);
+    bool HasCheckBoxes() const;
+    bool EnableCheckBoxes(bool enable = true);
     bool IsItemChecked(long item) const;
     void CheckItem(long item, bool check);
 
@@ -789,7 +791,7 @@ protected:
            m_lineBeforeLastClicked,
            m_lineSelectSingleOnUp;
 
-    bool m_hasCheckboxes;
+    bool m_hasCheckBoxes;
 
 protected:
     wxWindow *GetMainWindowOfCompositeControl() wxOVERRIDE { return GetParent(); }
@@ -853,7 +855,7 @@ private:
     // Check if the given point is inside the checkbox of this item.
     //
     // Always returns false if there are no checkboxes.
-    bool IsInsideCheckbox(long item, int x, int y);
+    bool IsInsideCheckBox(long item, int x, int y);
 
     // the height of one line using the current font
     wxCoord m_lineHeight;

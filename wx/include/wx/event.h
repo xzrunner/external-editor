@@ -153,8 +153,8 @@ private:
 // These are needed for the functor definitions
 typedef void (wxEvtHandler::*wxEventFunction)(wxEvent&);
 
-// We had some trouble (specifically with eVC for ARM WinCE build) with using
-// wxEventFunction in the past so we had introduced wxObjectEventFunction which
+// We had some trouble with using wxEventFunction
+// in the past so we had introduced wxObjectEventFunction which
 // used to be a typedef for a member of wxObject and not wxEvtHandler to work
 // around this but as eVC is not really supported any longer we now only keep
 // this for backwards compatibility and, despite its name, this is a typedef
@@ -332,7 +332,7 @@ class wxEventFunctorMethod
               <
                 Class,
                 EventArg,
-                wxConvertibleTo<Class, wxEvtHandler>::value != 0
+                wxIsPubliclyDerived<Class, wxEvtHandler>::value != 0
               >
 {
 private:
@@ -356,7 +356,7 @@ public:
         CheckHandlerArgument(static_cast<EventClass *>(NULL));
     }
 
-    virtual void operator()(wxEvtHandler *handler, wxEvent& event)
+    virtual void operator()(wxEvtHandler *handler, wxEvent& event) wxOVERRIDE
     {
         Class * realHandler = m_handler;
         if ( !realHandler )
@@ -373,7 +373,7 @@ public:
         (realHandler->*m_method)(static_cast<EventArg&>(event));
     }
 
-    virtual bool IsMatching(const wxEventFunctor& functor) const
+    virtual bool IsMatching(const wxEventFunctor& functor) const wxOVERRIDE
     {
         if ( wxTypeId(functor) != wxTypeId(*this) )
             return false;
@@ -388,10 +388,10 @@ public:
                (m_handler == other.m_handler || other.m_handler == NULL);
     }
 
-    virtual wxEvtHandler *GetEvtHandler() const
+    virtual wxEvtHandler *GetEvtHandler() const wxOVERRIDE
         { return this->ConvertToEvtHandler(m_handler); }
 
-    virtual wxEventFunction GetEvtMethod() const
+    virtual wxEventFunction GetEvtMethod() const wxOVERRIDE
         { return this->ConvertToEvtMethod(m_method); }
 
 private:
@@ -631,6 +631,13 @@ class WXDLLIMPEXP_FWD_CORE wxInitDialogEvent;
 class WXDLLIMPEXP_FWD_CORE wxUpdateUIEvent;
 class WXDLLIMPEXP_FWD_CORE wxClipboardTextEvent;
 class WXDLLIMPEXP_FWD_CORE wxHelpEvent;
+class WXDLLIMPEXP_FWD_CORE wxGestureEvent;
+class WXDLLIMPEXP_FWD_CORE wxPanGestureEvent;
+class WXDLLIMPEXP_FWD_CORE wxZoomGestureEvent;
+class WXDLLIMPEXP_FWD_CORE wxRotateGestureEvent;
+class WXDLLIMPEXP_FWD_CORE wxTwoFingerTapEvent;
+class WXDLLIMPEXP_FWD_CORE wxLongPressEvent;
+class WXDLLIMPEXP_FWD_CORE wxPressAndTapEvent;
 
 
     // Command events
@@ -735,6 +742,14 @@ wxDECLARE_EXPORTED_EVENT(WXDLLIMPEXP_CORE, wxEVT_SCROLLWIN_PAGEUP, wxScrollWinEv
 wxDECLARE_EXPORTED_EVENT(WXDLLIMPEXP_CORE, wxEVT_SCROLLWIN_PAGEDOWN, wxScrollWinEvent);
 wxDECLARE_EXPORTED_EVENT(WXDLLIMPEXP_CORE, wxEVT_SCROLLWIN_THUMBTRACK, wxScrollWinEvent);
 wxDECLARE_EXPORTED_EVENT(WXDLLIMPEXP_CORE, wxEVT_SCROLLWIN_THUMBRELEASE, wxScrollWinEvent);
+
+    // Gesture events
+wxDECLARE_EXPORTED_EVENT(WXDLLIMPEXP_CORE, wxEVT_GESTURE_PAN, wxPanGestureEvent);
+wxDECLARE_EXPORTED_EVENT(WXDLLIMPEXP_CORE, wxEVT_GESTURE_ZOOM, wxZoomGestureEvent);
+wxDECLARE_EXPORTED_EVENT(WXDLLIMPEXP_CORE, wxEVT_GESTURE_ROTATE, wxRotateGestureEvent);
+wxDECLARE_EXPORTED_EVENT(WXDLLIMPEXP_CORE, wxEVT_TWO_FINGER_TAP, wxTwoFingerTapEvent);
+wxDECLARE_EXPORTED_EVENT(WXDLLIMPEXP_CORE, wxEVT_LONG_PRESS, wxLongPressEvent);
+wxDECLARE_EXPORTED_EVENT(WXDLLIMPEXP_CORE, wxEVT_PRESS_AND_TAP, wxPressAndTapEvent);
 
     // System events
 wxDECLARE_EXPORTED_EVENT(WXDLLIMPEXP_CORE, wxEVT_SIZE, wxSizeEvent);
@@ -1848,6 +1863,197 @@ private:
 
 private:
     wxDECLARE_DYNAMIC_CLASS_NO_ASSIGN(wxSetCursorEvent);
+};
+
+ // Gesture Event
+
+const unsigned int wxTwoFingerTimeInterval = 200;
+
+class WXDLLIMPEXP_CORE wxGestureEvent : public wxEvent
+{
+public:
+    wxGestureEvent(wxWindowID winid = 0, wxEventType type = wxEVT_NULL)
+        : wxEvent(winid, type)
+    {
+        m_isStart = false;
+        m_isEnd = false;
+    }
+
+    wxGestureEvent(const wxGestureEvent& event) : wxEvent(event)
+    {
+        m_pos = event.m_pos;
+        m_isStart = event.m_isStart;
+        m_isEnd = event.m_isEnd;
+    }
+
+    const wxPoint& GetPosition() const { return m_pos; }
+    void SetPosition(const wxPoint& pos) { m_pos = pos; }
+    bool IsGestureStart() const { return m_isStart; }
+    void SetGestureStart(bool isStart = true) { m_isStart = isStart; }
+    bool IsGestureEnd() const { return m_isEnd; }
+    void SetGestureEnd(bool isEnd = true) { m_isEnd = isEnd; }
+
+    virtual wxEvent *Clone() const { return new wxGestureEvent(*this); }
+
+protected:
+    wxPoint m_pos;
+    bool m_isStart, m_isEnd;
+
+    wxDECLARE_DYNAMIC_CLASS_NO_ASSIGN(wxGestureEvent);
+
+};
+
+ // Pan Gesture Event
+
+ /*
+  wxEVT_GESTURE_PAN
+  */
+
+class WXDLLIMPEXP_CORE wxPanGestureEvent : public wxGestureEvent
+{
+public:
+    wxPanGestureEvent(wxWindowID winid = 0)
+        : wxGestureEvent(winid, wxEVT_GESTURE_PAN)
+    {
+    }
+
+    wxPanGestureEvent(const wxPanGestureEvent& event)
+        : wxGestureEvent(event),
+          m_delta(event.m_delta)
+    {
+    }
+
+    wxPoint GetDelta() const { return m_delta; }
+    void SetDelta(const wxPoint& delta) { m_delta = delta; }
+
+    virtual wxEvent *Clone() const { return new wxPanGestureEvent(*this); }
+
+private:
+    wxPoint m_delta;
+
+    wxDECLARE_DYNAMIC_CLASS_NO_ASSIGN(wxPanGestureEvent);
+};
+
+ // Zoom Gesture Event
+
+ /*
+  wxEVT_GESTURE_ZOOM
+  */
+
+class WXDLLIMPEXP_CORE wxZoomGestureEvent : public wxGestureEvent
+{
+public:
+    wxZoomGestureEvent(wxWindowID winid = 0)
+        : wxGestureEvent(winid, wxEVT_GESTURE_ZOOM)
+        { m_zoomFactor = 1.0; }
+
+    wxZoomGestureEvent(const wxZoomGestureEvent& event) : wxGestureEvent(event)
+    {
+        m_zoomFactor = event.m_zoomFactor;
+    }
+
+    double GetZoomFactor() const { return m_zoomFactor; }
+    void SetZoomFactor(double zoomFactor) { m_zoomFactor = zoomFactor; }
+
+    virtual wxEvent *Clone() const { return new wxZoomGestureEvent(*this); }
+
+private:
+    double m_zoomFactor;
+
+    wxDECLARE_DYNAMIC_CLASS_NO_ASSIGN(wxZoomGestureEvent);
+};
+
+ // Rotate Gesture Event
+
+ /*
+  wxEVT_GESTURE_ROTATE
+  */
+
+class WXDLLIMPEXP_CORE wxRotateGestureEvent : public wxGestureEvent
+{
+public:
+    wxRotateGestureEvent(wxWindowID winid = 0)
+        : wxGestureEvent(winid, wxEVT_GESTURE_ROTATE)
+        { m_rotationAngle = 0.0; }
+
+    wxRotateGestureEvent(const wxRotateGestureEvent& event) : wxGestureEvent(event)
+    {
+        m_rotationAngle = event.m_rotationAngle;
+    }
+
+    double GetRotationAngle() const { return m_rotationAngle; }
+    void SetRotationAngle(double rotationAngle) { m_rotationAngle = rotationAngle; }
+
+    virtual wxEvent *Clone() const { return new wxRotateGestureEvent(*this); }
+
+private:
+    double m_rotationAngle;
+
+    wxDECLARE_DYNAMIC_CLASS_NO_ASSIGN(wxRotateGestureEvent);
+};
+
+ // Two Finger Tap Gesture Event
+
+ /*
+  wxEVT_TWO_FINGER_TAP
+  */
+
+class WXDLLIMPEXP_CORE wxTwoFingerTapEvent : public wxGestureEvent
+{
+public:
+    wxTwoFingerTapEvent(wxWindowID winid = 0)
+        : wxGestureEvent(winid, wxEVT_TWO_FINGER_TAP)
+        { }
+
+    wxTwoFingerTapEvent(const wxTwoFingerTapEvent& event) : wxGestureEvent(event)
+    { }
+
+    virtual wxEvent *Clone() const { return new wxTwoFingerTapEvent(*this); }
+
+private:
+    wxDECLARE_DYNAMIC_CLASS_NO_ASSIGN(wxTwoFingerTapEvent);
+};
+
+ // Long Press Gesture Event
+
+ /*
+  wxEVT_LONG_PRESS
+  */
+
+class WXDLLIMPEXP_CORE wxLongPressEvent : public wxGestureEvent
+{
+public:
+    wxLongPressEvent(wxWindowID winid = 0)
+        : wxGestureEvent(winid, wxEVT_LONG_PRESS)
+        { }
+
+    wxLongPressEvent(const wxLongPressEvent& event) : wxGestureEvent(event)
+    { }
+
+    virtual wxEvent *Clone() const { return new wxLongPressEvent(*this); }
+private:
+    wxDECLARE_DYNAMIC_CLASS_NO_ASSIGN(wxLongPressEvent);
+};
+
+ // Press And Tap Gesture Event
+
+ /*
+  wxEVT_PRESS_AND_TAP
+  */
+
+class WXDLLIMPEXP_CORE wxPressAndTapEvent : public wxGestureEvent
+{
+public:
+    wxPressAndTapEvent(wxWindowID winid = 0)
+        : wxGestureEvent(winid, wxEVT_PRESS_AND_TAP)
+        { }
+
+    wxPressAndTapEvent(const wxPressAndTapEvent& event) : wxGestureEvent(event)
+    { }
+
+    virtual wxEvent *Clone() const { return new wxPressAndTapEvent(*this); }
+private:
+    wxDECLARE_DYNAMIC_CLASS_NO_ASSIGN(wxPressAndTapEvent);
 };
 
 // Keyboard input event class
@@ -3106,8 +3312,7 @@ private:
 
 
 /* TODO
- wxEVT_MOUSE_CAPTURE_CHANGED,
- wxEVT_SETTING_CHANGED, // WM_WININICHANGE (NT) / WM_SETTINGCHANGE (Win95)
+ wxEVT_SETTING_CHANGED, // WM_WININICHANGE
 // wxEVT_FONT_CHANGED,  // WM_FONTCHANGE: roll into wxEVT_SETTING_CHANGED, but remember to propagate
                         // wxEVT_FONT_CHANGED to all other windows (maybe).
  wxEVT_DRAW_ITEM, // Leave these three as virtual functions in wxControl?? Platform-specific.
@@ -3385,6 +3590,18 @@ public:
     bool ProcessThreadEvent(const wxEvent& event);
         // NOTE: uses AddPendingEvent(); call only from secondary threads
 #endif
+
+#if wxUSE_EXCEPTIONS
+    // This is a private function which handles any exceptions arising during
+    // the execution of user-defined code called in the event loop context by
+    // forwarding them to wxApp::OnExceptionInMainLoop() and, if it rethrows,
+    // to wxApp::OnUnhandledException(). In any case this function ensures that
+    // no exceptions ever escape from it and so is useful to call at module
+    // boundary.
+    //
+    // It must be only called when handling an active exception.
+    static void WXConsumeException();
+#endif // wxUSE_EXCEPTIONS
 
 #ifdef wxHAS_CALL_AFTER
     // Asynchronous method calls: these methods schedule the given method
@@ -3897,7 +4114,12 @@ typedef void (wxEvtHandler::*wxContextMenuEventFunction)(wxContextMenuEvent&);
 typedef void (wxEvtHandler::*wxMouseCaptureChangedEventFunction)(wxMouseCaptureChangedEvent&);
 typedef void (wxEvtHandler::*wxMouseCaptureLostEventFunction)(wxMouseCaptureLostEvent&);
 typedef void (wxEvtHandler::*wxClipboardTextEventFunction)(wxClipboardTextEvent&);
-
+typedef void (wxEvtHandler::*wxPanGestureEventFunction)(wxPanGestureEvent&);
+typedef void (wxEvtHandler::*wxZoomGestureEventFunction)(wxZoomGestureEvent&);
+typedef void (wxEvtHandler::*wxRotateGestureEventFunction)(wxRotateGestureEvent&);
+typedef void (wxEvtHandler::*wxTwoFingerTapEventFunction)(wxTwoFingerTapEvent&);
+typedef void (wxEvtHandler::*wxLongPressEventFunction)(wxLongPressEvent&);
+typedef void (wxEvtHandler::*wxPressAndTapEventFunction)(wxPressAndTapEvent&);
 
 #define wxCommandEventHandler(func) \
     wxEVENT_HANDLER_CAST(wxCommandEventFunction, func)
@@ -3972,6 +4194,18 @@ typedef void (wxEvtHandler::*wxClipboardTextEventFunction)(wxClipboardTextEvent&
     wxEVENT_HANDLER_CAST(wxMouseCaptureLostEventFunction, func)
 #define wxClipboardTextEventHandler(func) \
     wxEVENT_HANDLER_CAST(wxClipboardTextEventFunction, func)
+#define wxPanGestureEventHandler(func) \
+    wxEVENT_HANDLER_CAST(wxPanGestureEventFunction, func)
+#define wxZoomGestureEventHandler(func) \
+    wxEVENT_HANDLER_CAST(wxZoomGestureEventFunction, func)
+#define wxRotateGestureEventHandler(func) \
+    wxEVENT_HANDLER_CAST(wxRotateGestureEventFunction, func)
+#define wxTwoFingerTapEventHandler(func) \
+    wxEVENT_HANDLER_CAST(wxTwoFingerTapEventFunction, func)
+#define wxLongPressEventHandler(func) \
+    wxEVENT_HANDLER_CAST(wxLongPressEventFunction, func)
+#define wxPressAndTapEventHandler(func) \
+    wxEVENT_HANDLER_CAST(wxPressAndTapEventFunction, func)
 
 #endif // wxUSE_GUI
 
@@ -4305,6 +4539,14 @@ typedef void (wxEvtHandler::*wxClipboardTextEventFunction)(wxClipboardTextEvent&
     EVT_COMMAND_SCROLL_THUMBTRACK(winid, func) \
     EVT_COMMAND_SCROLL_THUMBRELEASE(winid, func) \
     EVT_COMMAND_SCROLL_CHANGED(winid, func)
+
+// Gesture events
+#define EVT_GESTURE_PAN(winid, func) wx__DECLARE_EVT1(wxEVT_GESTURE_PAN, winid, wxPanGestureEventHandler(func))
+#define EVT_GESTURE_ZOOM(winid, func) wx__DECLARE_EVT1(wxEVT_GESTURE_ZOOM, winid, wxZoomGestureEventHandler(func))
+#define EVT_GESTURE_ROTATE(winid, func) wx__DECLARE_EVT1(wxEVT_GESTURE_ROTATE, winid, wxRotateGestureEventHandler(func))
+#define EVT_TWO_FINGER_TAP(winid, func) wx__DECLARE_EVT1(wxEVT_TWO_FINGER_TAP, winid, wxTwoFingerTapEventHandler(func))
+#define EVT_LONG_PRESS(winid, func) wx__DECLARE_EVT1(wxEVT_LONG_PRESS, winid, wxLongPressEventHandler(func))
+#define EVT_PRESS_AND_TAP(winid, func) wx__DECLARE_EVT1(wxEVT_PRESS_AND_TAP, winid, wxPressAndTapEvent(func))
 
 // Convenience macros for commonly-used commands
 #define EVT_CHECKBOX(winid, func) wx__DECLARE_EVT1(wxEVT_CHECKBOX, winid, wxCommandEventHandler(func))

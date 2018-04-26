@@ -513,7 +513,10 @@ public:
     // - replaces \n, \r, \t by respective chars (according to C syntax)
     // - replaces _ by & and __ by _ (needed for _File => &File because of XML)
     // - calls wxGetTranslations (unless disabled in wxXmlResource)
-    wxString GetText(const wxString& param, bool translate = true) wxOVERRIDE;
+    //
+    // The first two conversions can be disabled by using wxXRC_TEXT_NO_ESCAPE
+    // in flags and the last one -- by using wxXRC_TEXT_NO_TRANSLATE.
+    wxString GetNodeText(const wxXmlNode *node, int flags = 0) wxOVERRIDE;
 
     // Returns the XRCID.
     int GetID() wxOVERRIDE;
@@ -543,6 +546,9 @@ public:
     // Gets a dimension (may be in dialog units).
     wxCoord GetDimension(const wxString& param, wxCoord defaultv = 0,
                          wxWindow *windowToUse = NULL) wxOVERRIDE;
+
+    // Gets a size which is not expressed in pixels, so not in dialog units.
+    wxSize GetPairInts(const wxString& param) wxOVERRIDE;
 
     // Gets a direction, complains if the value is invalid.
     wxDirection GetDirection(const wxString& param, wxDirection dirDefault = wxLEFT) wxOVERRIDE;

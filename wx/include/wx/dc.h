@@ -325,6 +325,9 @@ public:
 
     virtual void CalcBoundingBox(wxCoord x, wxCoord y)
     {
+      // Bounding box is internally stored in device units.
+      x = LogicalToDeviceX(x);
+      y = LogicalToDeviceY(y);
       if ( m_isBBoxValid )
       {
          if ( x < m_minX ) m_minX = x;
@@ -349,10 +352,11 @@ public:
         m_minX = m_maxX = m_minY = m_maxY = 0;
     }
 
-    wxCoord MinX() const { return m_minX; }
-    wxCoord MaxX() const { return m_maxX; }
-    wxCoord MinY() const { return m_minY; }
-    wxCoord MaxY() const { return m_maxY; }
+    // Get bounding box in logical units.
+    wxCoord MinX() const { return m_isBBoxValid ? DeviceToLogicalX(m_minX) : 0; }
+    wxCoord MaxX() const { return m_isBBoxValid ? DeviceToLogicalX(m_maxX) : 0; }
+    wxCoord MinY() const { return m_isBBoxValid ? DeviceToLogicalY(m_minY) : 0; }
+    wxCoord MaxY() const { return m_isBBoxValid ? DeviceToLogicalY(m_maxY) : 0; }
 
     // setters and getters
 
@@ -445,14 +449,17 @@ public:
     virtual void DoGetClippingBox(wxCoord *x, wxCoord *y,
                                   wxCoord *w, wxCoord *h) const
     {
+        int dcWidth, dcHeight;
+        DoGetSize(&dcWidth, &dcHeight);
+
         if ( x )
-            *x = m_clipX1;
+            *x = m_clipping ? m_clipX1 : DeviceToLogicalX(0);
         if ( y )
-            *y = m_clipY1;
+            *y = m_clipping ? m_clipY1 : DeviceToLogicalY(0);
         if ( w )
-            *w = m_clipX2 - m_clipX1;
+            *w = m_clipping ? m_clipX2 - m_clipX1 : DeviceToLogicalXRel(dcWidth);
         if ( h )
-            *h = m_clipY2 - m_clipY1;
+            *h = m_clipping ? m_clipY2 - m_clipY1 : DeviceToLogicalYRel(dcHeight);
     }
 
     virtual void DestroyClippingRegion() { ResetClipping(); }
@@ -709,8 +716,8 @@ protected:
                  m_mm_to_pix_y;
 
     // bounding and clipping boxes
-    wxCoord m_minX, m_minY, m_maxX, m_maxY;
-    wxCoord m_clipX1, m_clipY1, m_clipX2, m_clipY2;
+    wxCoord m_minX, m_minY, m_maxX, m_maxY; // Bounding box is stored in device units.
+    wxCoord m_clipX1, m_clipY1, m_clipX2, m_clipY2;  // Clipping box is stored in logical units.
 
     wxRasterOperationMode m_logicalFunction;
     int m_backgroundMode;
@@ -1429,16 +1436,31 @@ class WXDLLIMPEXP_CORE wxDCClipper
 {
 public:
     wxDCClipper(wxDC& dc, const wxRegion& r) : m_dc(dc)
-        { dc.SetClippingRegion(r.GetBox()); }
+    {
+        dc.GetClippingBox(m_oldClipRect);
+        dc.SetClippingRegion(r.GetBox());
+    }
     wxDCClipper(wxDC& dc, const wxRect& r) : m_dc(dc)
-        { dc.SetClippingRegion(r.x, r.y, r.width, r.height); }
+    {
+        dc.GetClippingBox(m_oldClipRect);
+        dc.SetClippingRegion(r.x, r.y, r.width, r.height);
+    }
     wxDCClipper(wxDC& dc, wxCoord x, wxCoord y, wxCoord w, wxCoord h) : m_dc(dc)
-        { dc.SetClippingRegion(x, y, w, h); }
+    {
+        dc.GetClippingBox(m_oldClipRect);
+        dc.SetClippingRegion(x, y, w, h);
+    }
 
-    ~wxDCClipper() { m_dc.DestroyClippingRegion(); }
+    ~wxDCClipper()
+    {
+        m_dc.DestroyClippingRegion();
+        if ( !m_oldClipRect.IsEmpty() )
+            m_dc.SetClippingRegion(m_oldClipRect);
+    }
 
 private:
     wxDC& m_dc;
+    wxRect m_oldClipRect;
 
     wxDECLARE_NO_COPY_CLASS(wxDCClipper);
 };
